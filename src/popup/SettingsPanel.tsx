@@ -2,9 +2,11 @@ import { useState, useEffect } from 'preact/hooks';
 
 interface SettingsPanelProps {
   onBack: () => void;
+  onSave?: () => void;
+  isInitialSetup?: boolean;
 }
 
-export function SettingsPanel({ onBack }: SettingsPanelProps) {
+export function SettingsPanel({ onBack, onSave, isInitialSetup = false }: SettingsPanelProps) {
   const [apiBaseUrl, setApiBaseUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [modelName, setModelName] = useState('');
@@ -35,14 +37,29 @@ export function SettingsPanel({ onBack }: SettingsPanelProps) {
       modelName: modelName
     }, () => {
       setStatus('设置已成功保存！');
-      setTimeout(() => setStatus(''), 3000);
+      
+      if (onSave) {
+        setTimeout(onSave, 1000);
+      } else {
+        setTimeout(() => setStatus(''), 3000);
+      }
     });
+  };
+
+  const handleBackClick = () => {
+    if (isInitialSetup && (!apiKey || !apiBaseUrl || !modelName)) {
+      setStatus('请完成必要的API配置后再返回！');
+      setTimeout(() => setStatus(''), 3000);
+      return;
+    }
+    
+    onBack();
   };
 
   return (
     <div class="p-4 space-y-6">
       <div class="flex items-center">
-        <button onClick={onBack} class="p-1.5 rounded-full hover:bg-gray-200 mr-2">
+        <button onClick={handleBackClick} class="p-1.5 rounded-full hover:bg-gray-200 mr-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
             <path fill-rule="evenodd" d="M11.03 3.97a.75.75 0 010 1.06l-6.22 6.22H21a.75.75 0 010 1.5H4.81l6.22 6.22a.75.75 0 11-1.06 1.06l-7.5-7.5a.75.75 0 010-1.06l7.5-7.5a.75.75 0 011.06 0z" clip-rule="evenodd" />
           </svg>

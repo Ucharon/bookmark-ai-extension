@@ -1,5 +1,5 @@
 import { h } from 'preact';
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { Dropdown } from './Dropdown';
 import { SettingsPanel } from './SettingsPanel';
 import { PageAnalysis } from './PageAnalysis';
@@ -31,33 +31,13 @@ export function Popup() {
     headings: [],
     paragraphs: []
   });
+  
+  // 记录进入设置前的视图状态
+  const [previousView, setPreviousView] = useState<View>('loading');
 
   useEffect(() => {
-    // Start by checking the configuration
-    chrome.storage.sync.get(['apiKey', 'apiBaseUrl'], (settings) => {
-        if (!settings.apiKey || !settings.apiBaseUrl) {
-            setView('configuring');
-            return;
-        }
-        
-        // Then, get tab info
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            if (chrome.runtime.lastError || !tabs || tabs.length === 0) {
-              setView('error');
-              setError('无法访问当前页面。请在普通网页上使用本插件。');
-              return;
-            }
-            const tab = tabs[0];
-            if (tab.url?.startsWith('chrome://')) {
-               setView('error');
-               setError('无法在Chrome内部页面上使用此插件。');
-               return;
-            }
-            setTabInfo({ title: tab.title || '无标题', url: tab.url || '' });
-            setView('idle');
-        });
-    });
-
+    checkApiConfiguration();
+    
     // Get bookmark tree
     chrome.runtime.sendMessage({ action: 'getBookmarkTree' }, (tree) => {
       if (tree) {
@@ -65,7 +45,6 @@ export function Popup() {
         setBookmarkFolders(flattenedFolders);
       }
     });
-
   }, []);
 
   const flattenBookmarkTree = (nodes: chrome.bookmarks.BookmarkTreeNode[]): BookmarkFolder[] => {
@@ -144,14 +123,54 @@ export function Popup() {
   };
 
   const openOptionsPage = () => {
-    // No longer open the options page, instead switch to settings view
+    // 记录当前视图状态，然后切换到设置视图
+    setPreviousView(view);
     setView('settings');
+  };
+
+  // 检查API配置的函数
+  const checkApiConfiguration = () => {
+    chrome.storage.sync.get(['apiKey', 'apiBaseUrl'], (settings) => {
+      if (!settings.apiKey || !settings.apiBaseUrl) {
+        setView('configuring');
+        return;
+      }
+      
+      // Then, get tab info
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (chrome.runtime.lastError || !tabs || tabs.length === 0) {
+          setView('error');
+          setError('无法访问当前页面。请在普通网页上使用本插件。');
+          return;
+        }
+        const tab = tabs[0];
+        if (tab.url?.startsWith('chrome://')) {
+           setView('error');
+           setError('无法在Chrome内部页面上使用此插件。');
+           return;
+        }
+        setTabInfo({ title: tab.title || '无标题', url: tab.url || '' });
+        setView('idle');
+      });
+    });
+  };
+  
+  // 设置保存成功后的处理函数
+  const handleSettingsSave = () => {
+    // 重新检查API配置
+    checkApiConfiguration();
   };
 
   const renderContent = () => {
     switch (view) {
       case 'settings':
-        return <SettingsPanel onBack={() => setView('idle')} />;
+        // 根据上一个视图状态决定是否是首次配置
+        const isInitialSetup = previousView === 'configuring';
+        return <SettingsPanel 
+          onBack={() => setView(previousView)} // 返回上一个视图状态
+          onSave={handleSettingsSave}
+          isInitialSetup={isInitialSetup} 
+        />;
       case 'configuring':
         return (
           <div class="p-5 text-center space-y-4">

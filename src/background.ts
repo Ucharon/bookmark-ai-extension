@@ -71,12 +71,16 @@ async function getAiClassification(sendResponse: (response: any) => void) {
   try {
     const settings = await getSettings();
     if (!settings.apiKey || !settings.apiBaseUrl) {
-      throw new Error('API Key or Base URL is not set. Please configure it in the options page.');
+      throw new Error('API密钥或基础URL未设置。请在设置页面中配置API信息。');
+    }
+    
+    if (!settings.modelName) {
+      throw new Error('模型名称未设置。请在设置页面中配置完整的API信息。');
     }
 
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab || !tab.title || !tab.url) {
-      throw new Error('Could not get active tab information.');
+      throw new Error('无法获取当前标签页信息。');
     }
 
     // 如果没有缓存的页面内容，执行内容提取脚本
@@ -88,23 +92,30 @@ async function getAiClassification(sendResponse: (response: any) => void) {
     const bookmarkTree = await chrome.bookmarks.getTree();
     const categories = buildCategoryObjectFromTree(bookmarkTree);
     
-    const categoryPath = await getClassificationFromLLM(tab.title, tab.url, categories, settings);
+    try {
+      const categoryPath = await getClassificationFromLLM(tab.title, tab.url, categories, settings);
 
-    // 准备页面分析摘要
-    const pageAnalysis = {
-      description: cachedPageContent?.metadata?.description || '',
-      keywords: cachedPageContent?.metadata?.keywords || [],
-      headings: cachedPageContent?.headings?.slice(0, 3) || [],
-      paragraphs: cachedPageContent?.paragraphs?.slice(0, 2) || []
-    };
+      // 准备页面分析摘要
+      const pageAnalysis = {
+        description: cachedPageContent?.metadata?.description || '',
+        keywords: cachedPageContent?.metadata?.keywords || [],
+        headings: cachedPageContent?.headings?.slice(0, 3) || [],
+        paragraphs: cachedPageContent?.paragraphs?.slice(0, 2) || []
+      };
 
-    sendResponse({ 
-      status: 'success', 
-      categoryPath: categoryPath, 
-      tab: { title: tab.title, url: tab.url },
-      pageAnalysis // 在响应中包含页面分析数据
-    });
-  
+      sendResponse({ 
+        status: 'success', 
+        categoryPath: categoryPath, 
+        tab: { title: tab.title, url: tab.url },
+        pageAnalysis // 在响应中包含页面分析数据
+      });
+    } catch (apiError) {
+      console.error('AI Classification API Error:', apiError);
+      sendResponse({ 
+        status: 'error', 
+        message: `AI接口调用失败：${(apiError as Error).message}。请检查您的API设置和网络连接。` 
+      });
+    }
   } catch (error) {
     console.error('Bookmark AI Organizer Error:', error);
     sendResponse({ status: 'error', message: (error as Error).message });
