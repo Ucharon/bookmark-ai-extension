@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="icon-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#38bdf8" />
+      <stop offset="100%" style="stop-color:#4f46e5" />
+    </linearGradient>
+  </defs>
+
+  <path d="M32 0 C23.16 0 16 7.16 16 16 V128 L64 96 L112 128 V16 C112 7.16 104.84 0 96 0 H32 Z" fill="url(#icon-gradient)" />
+
+  <path d="M64 42 L69.39 58.61 L86 64 L69.39 69.39 L64 86 L58.61 69.39 L42 64 L58.61 58.61 Z" fill="#ffffff" />
+  
+  <path d="M32 22 L34.12 27.88 L40 30 L34.12 32.12 L32 38 L29.88 32.12 L24 30 L29.88 27.88 Z" fill="#ffffff" opacity="0.8"/>
+
+  <path d="M96 90 L98.12 95.88 L104 98 L98.12 100.12 L96 106 L93.88 100.12 L88 98 L93.88 95.88 Z" fill="#ffffff" opacity="0.8"/>
+
+</svg> 

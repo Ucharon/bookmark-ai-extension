@@ -1,0 +1,29 @@
+{
+  "name": "chrome-extension",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "",
+  "main": "background.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "preact": "^10.26.8"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.1",
+    "@tailwindcss/vite": "^4.1.8",
+    "@types/chrome": "^0.0.326",
+    "@types/node": "^24.0.0",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.4",
+    "tailwindcss": "^4.1.8",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  }
+}

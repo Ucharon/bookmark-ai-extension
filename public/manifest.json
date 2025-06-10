@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Bookmark AI Organizer",
+  "version": "1.0",
+  "description": "Uses an LLM to automatically classify your bookmarks.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "bookmarks"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "options_page": "options.html",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": [
+    "https://api.moonshot.cn/v1/*"
+  ]
+} 
