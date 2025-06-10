@@ -17,6 +17,24 @@ interface ErrorResponse {
 
 type ApiResponse = SuccessResponse | ErrorResponse;
 
+interface PageContent {
+  url: string;
+  title: string;
+  metadata: {
+    description: string;
+    keywords: string[];
+    author: string;
+    ogTags: Record<string, string>;
+    canonicalUrl: string;
+  };
+  headings: string[];
+  paragraphs: string[];
+  text: string;
+  error?: string;
+}
+
+// 存储页面内容的缓存
+let cachedPageContent: PageContent | null = null;
 
 // Main message listener
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -40,6 +58,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true; // Async response
   }
+  
+  // 处理内容提取脚本返回的数据
+  if (request.action === 'contentExtracted' && request.content) {
+    cachedPageContent = request.content;
+    sendResponse({ status: 'success' });
+    return false;
+  }
 });
 
 async function getAiClassification(sendResponse: (response: any) => void) {
@@ -54,18 +79,73 @@ async function getAiClassification(sendResponse: (response: any) => void) {
       throw new Error('Could not get active tab information.');
     }
 
+    // 如果没有缓存的页面内容，执行内容提取脚本
+    if (!cachedPageContent || cachedPageContent.url !== tab.url) {
+      await extractPageContent(tab.id as number);
+    }
+
     // Dynamically build categories from the user's bookmark tree.
     const bookmarkTree = await chrome.bookmarks.getTree();
     const categories = buildCategoryObjectFromTree(bookmarkTree);
     
     const categoryPath = await getClassificationFromLLM(tab.title, tab.url, categories, settings);
 
-    sendResponse({ status: 'success', categoryPath: categoryPath, tab: { title: tab.title, url: tab.url } });
+    // 准备页面分析摘要
+    const pageAnalysis = {
+      description: cachedPageContent?.metadata?.description || '',
+      keywords: cachedPageContent?.metadata?.keywords || [],
+      headings: cachedPageContent?.headings?.slice(0, 3) || [],
+      paragraphs: cachedPageContent?.paragraphs?.slice(0, 2) || []
+    };
+
+    sendResponse({ 
+      status: 'success', 
+      categoryPath: categoryPath, 
+      tab: { title: tab.title, url: tab.url },
+      pageAnalysis // 在响应中包含页面分析数据
+    });
   
   } catch (error) {
     console.error('Bookmark AI Organizer Error:', error);
     sendResponse({ status: 'error', message: (error as Error).message });
   }
+}
+
+/**
+ * 执行内容提取脚本，获取页面内容
+ */
+async function extractPageContent(tabId: number): Promise<PageContent | null> {
+  return new Promise((resolve) => {
+    // 重置缓存的内容
+    cachedPageContent = null;
+    
+    // 监听一次性消息，接收内容提取结果
+    const listener = (message: any, sender: chrome.runtime.MessageSender) => {
+      if (message.action === 'contentExtracted' && sender.tab?.id === tabId) {
+        cachedPageContent = message.content;
+        chrome.runtime.onMessage.removeListener(listener);
+        resolve(message.content);
+      }
+    };
+    chrome.runtime.onMessage.addListener(listener);
+    
+    // 注入内容提取脚本
+    chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['contentScript.js']
+    }).catch(error => {
+      console.error('Error injecting content script:', error);
+      resolve(null);
+    });
+    
+    // 设置超时，防止无限等待
+    setTimeout(() => {
+      if (!cachedPageContent) {
+        chrome.runtime.onMessage.removeListener(listener);
+        resolve(null);
+      }
+    }, 5000);
+  });
 }
 
 /**
@@ -131,7 +211,7 @@ function getSettings(): Promise<Settings> {
 }
 
 async function getClassificationFromLLM(title: string, url: string, categories: any, settings: Settings): Promise<string> {
-  const prompt = buildPrompt(title, categories);
+  const prompt = buildPrompt(title, url, categories, cachedPageContent);
 
   const response = await fetch(`${settings.apiBaseUrl}/chat/completions`, {
     method: 'POST',
@@ -163,20 +243,40 @@ async function getClassificationFromLLM(title: string, url: string, categories: 
   return category;
 }
 
-function buildPrompt(title: string, categories: any): string {
+function buildPrompt(title: string, url: string, categories: any, pageContent: PageContent | null): string {
     const categoryDescriptions = JSON.stringify(categories, null, 2);
-    return `You are an expert bookmark organizer. Your task is to classify a new bookmark into ONE of the following categories based on its title. The categories are defined in a hierarchical JSON structure.
+    
+    let contentSection = '';
+    if (pageContent && !pageContent.error) {
+      contentSection = `
+Page Content Analysis:
+Title: ${pageContent.title || title}
+URL: ${pageContent.url || url}
+Description: ${pageContent.metadata?.description || 'N/A'}
+Keywords: ${pageContent.metadata?.keywords?.join(', ') || 'N/A'}
+
+Key Headings:
+${pageContent.headings?.slice(0, 5).map(h => `- ${h}`).join('\n') || 'N/A'}
+
+Main Content Excerpts:
+${pageContent.paragraphs?.slice(0, 3).map(p => `- ${p}`).join('\n') || 'N/A'}
+`;
+    }
+    
+    return `You are an expert bookmark organizer. Your task is to classify a new bookmark into ONE of the following categories based on its title and content. The categories are defined in a hierarchical JSON structure.
 
 Your response MUST be the full path to the chosen category, like "Grandparent/Parent/Child". Do NOT add any other text, explanation, or markdown.
 
 Available Categories:
 ${categoryDescriptions}
 
+${contentSection}
+
 Example:
 If the user wants to classify "Spring Boot Official Documentation", a good response would be "技术/后端开发与框架".
 If the user wants to classify "A Guide to Investment Banking", a good response would be "金融与商业/投资理财".
 
-Now, classify the following bookmark.
+Now, classify the following bookmark based on the title and page content provided.
 `;
 }
 

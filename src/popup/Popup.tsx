@@ -2,12 +2,20 @@ import { h } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { Dropdown } from './Dropdown';
 import { SettingsPanel } from './SettingsPanel';
+import { PageAnalysis } from './PageAnalysis';
 
 type View = 'idle' | 'loading' | 'success' | 'error' | 'configuring' | 'confirmation' | 'settings';
 
 interface BookmarkFolder {
   id: string;
   path: string;
+}
+
+interface PageAnalysisData {
+  description: string;
+  keywords: string[];
+  headings: string[];
+  paragraphs: string[];
 }
 
 export function Popup() {
@@ -17,6 +25,12 @@ export function Popup() {
   const [finalCategory, setFinalCategory] = useState('');
   const [suggestedPath, setSuggestedPath] = useState('');
   const [bookmarkFolders, setBookmarkFolders] = useState<BookmarkFolder[]>([]);
+  const [pageAnalysis, setPageAnalysis] = useState<PageAnalysisData>({
+    description: '',
+    keywords: [],
+    headings: [],
+    paragraphs: []
+  });
 
   useEffect(() => {
     // Start by checking the configuration
@@ -96,6 +110,12 @@ export function Popup() {
 
         setSuggestedPath(processedPath);
         setTabInfo(response.tab); // Make sure tabInfo is updated from background
+        
+        // 设置页面分析数据（如果有）
+        if (response.pageAnalysis) {
+          setPageAnalysis(response.pageAnalysis);
+        }
+        
         setView('confirmation');
       } else {
         setError(response.message || '发生了未知错误');
@@ -189,6 +209,9 @@ export function Popup() {
                 suggestedPath={suggestedPath}
               />
             </div>
+            
+            <PageAnalysis data={pageAnalysis} />
+            
             <div class="flex gap-2">
               <button onClick={() => setView('idle')} class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-colors">
                 返回
