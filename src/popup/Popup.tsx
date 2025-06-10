@@ -1,8 +1,9 @@
 import { h } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { Dropdown } from './Dropdown';
+import { SettingsPanel } from './SettingsPanel';
 
-type View = 'idle' | 'loading' | 'success' | 'error' | 'configuring' | 'confirmation';
+type View = 'idle' | 'loading' | 'success' | 'error' | 'configuring' | 'confirmation' | 'settings';
 
 interface BookmarkFolder {
   id: string;
@@ -123,11 +124,14 @@ export function Popup() {
   };
 
   const openOptionsPage = () => {
-    chrome.runtime.openOptionsPage();
+    // No longer open the options page, instead switch to settings view
+    setView('settings');
   };
 
   const renderContent = () => {
     switch (view) {
+      case 'settings':
+        return <SettingsPanel onBack={() => setView('idle')} />;
       case 'configuring':
         return (
           <div class="p-5 text-center space-y-4">
@@ -201,9 +205,9 @@ export function Popup() {
           <div class="p-4 space-y-3">
             <div class="relative text-center pb-1">
               <h1 class="text-lg font-bold text-gray-800">书签 AI 整理助手</h1>
-              <button onClick={openOptionsPage} title="设置" class="absolute top-0 right-0 text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0l-.1.41a1.495 1.495 0 01-1.01.82l-.44.12C5.4 5.05 4.5 6.42 5.05 7.98l.12.44c.23.85.23 1.77 0 2.62l-.12.44c-.56 1.56.34 2.93 1.9 3.48l.44.12a1.495 1.495 0 01.82 1.01l.1.41c.38 1.56 2.6 1.56 2.98 0l.1-.41a1.495 1.495 0 011.01-.82l.44-.12c1.56-.56 2.45-1.92 1.9-3.48l-.12-.44a1.5 1.5 0 010-2.62l.12-.44c.56-1.56-.34-2.93-1.9-3.48l-.44-.12a1.495 1.495 0 01-.82-1.01l-.1-.41zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+              <button onClick={openOptionsPage} title="设置" class="absolute top-0 right-0 text-gray-400 hover:text-gray-600 transition-colors p-1.5 rounded-full hover:bg-gray-100">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+                  <path fill-rule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.493 7.493 0 00-.986.57c-.166.115-.334.126-.45.083L6.3 5.508a1.875 1.875 0 00-2.282.819l-.922 1.597a1.875 1.875 0 00.432 2.385l.84.692c.095.078.17.229.154.43a7.598 7.598 0 000 1.139c.015.2-.059.352-.153.43l-.841.692a1.875 1.875 0 00-.432 2.385l.922 1.597a1.875 1.875 0 002.282.818l1.019-.382c.115-.043.283-.031.45.082.312.214.641.405.985.57.182.088.277.228.297.35l.178 1.071c.151.904.933 1.567 1.85 1.567h1.844c.916 0 1.699-.663 1.85-1.567l.178-1.072c.02-.12.114-.26.297-.349.344-.165.673-.356.985-.57.167-.114.335-.125.45-.082l1.02.382a1.875 1.875 0 002.28-.819l.923-1.597a1.875 1.875 0 00-.432-2.385l-.84-.692c-.095-.078-.17-.229-.154-.43a7.614 7.614 0 000-1.139c-.016-.2.059-.352.153-.43l.84-.692c.708-.582.891-1.59.433-2.385l-.922-1.597a1.875 1.875 0 00-2.282-.818l-1.02.382c-.114.043-.282.031-.449-.083a7.49 7.49 0 00-.985-.57c-.183-.087-.277-.227-.297-.348l-.179-1.072a1.875 1.875 0 00-1.85-1.567h-1.843zM12 15.75a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z" clip-rule="evenodd" />
                 </svg>
               </button>
             </div>
